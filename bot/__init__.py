@@ -162,7 +162,7 @@ def viewTest(mess: types.Message, form: Form, question_id: int=0):
     question_mess =  f"Вопрос {question_.name}\n"
     shuffle(question_.other_ans)
     for i, ans in enumerate(question_.other_ans):
-        question_mess += f"{i + 1}. {ans}"
+        question_mess += f"{i + 1}. {ans}\n"
     s = bot.send_message(mess.chat.id, question_mess)
     bot.register_next_step_handler(s, viewTest, form=form, question_id = question_id + 1)
 
