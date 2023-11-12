@@ -2,7 +2,6 @@ from telebot import TeleBot, types
 from .dataClasses import Question, Form
 from uuid import uuid4, UUID
 from random import shuffle
-from timeControl import TimeHandler
 
 bot = TeleBot(open("./bot/token", "r", encoding="utf-8").read())
 
@@ -159,12 +158,12 @@ def viewTest(mess: types.Message, form: Form, question_id: int=0):
     if len(form.question) == question_id:
         testResult(mess=mess, form=form)
         return
-    TimeHandler(time=option[mess.chat.id]["time"]).timeHand()
     question_ = form.question[question_id]
-    s = bot.send_message(mess.chat.id, f"Вопрос {question_.name}")
+    question_mess =  f"Вопрос {question_.name}\n"
     shuffle(question_.other_ans)
-    for ans in question_.other_ans:
-        bot.send_message(mess.chat.id, ans)
+    for i, ans in enumerate(question_.other_ans):
+        question_mess += f"{i + 1}. {ans}"
+    s = bot.send_message(mess.chat.id, question_mess)
     bot.register_next_step_handler(s, viewTest, form=form, question_id = question_id + 1)
 
 
