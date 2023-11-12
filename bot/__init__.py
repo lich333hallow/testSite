@@ -21,9 +21,9 @@ option = {}
 }
 """
 question = {}
+answers = {}
 
-
-@bot.message_handler(commands=["start"])
+@bot.message_handler(commands=["start", "menu"])
 def start(mess: types.Message):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("Создать тест", callback_data="CreateTest"), types.InlineKeyboardButton("Пройти тесты", callback_data="CompleteTest"))
@@ -33,13 +33,13 @@ def start(mess: types.Message):
 def selectType(mess: types.CallbackQuery):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("Учебный режим", callback_data="LearningType"), types.InlineKeyboardButton("Тестовый режим", callback_data="TestingType"))
-    bot.send_photo(mess.message.chat.id, open("./bot/pic/start.png", "rb"), reply_markup=markup)
+    bot.send_photo(mess.message.chat.id, open("./bot/pic/type.png", "rb"), reply_markup=markup)
 
 
 def timeLimit(mess: types.CallbackQuery):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("Ограничить время", callback_data="LimitTime"), types.InlineKeyboardButton("Неограниченное время", callback_data="WithoutLimit"))
-    bot.send_photo(mess.message.chat.id, open("./bot/pic/start.png", "rb"), reply_markup=markup)
+    bot.send_photo(mess.message.chat.id, open("./bot/pic/time.png", "rb"), reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -128,25 +128,53 @@ def endTest(mess: types.Message, corr_ans: str, name_of_qu: str, list_of_an: lis
     question.pop(user)
     print(tests)
     bot.send_message(mess.chat.id, f"Ура! Вы создали тест. Ваш код для теста:\n <code>{id}</code>", reply_markup=types.ReplyKeyboardRemove(), parse_mode="HTML")
+    start(mess)
+
 
 def askId(mess: types.Message):
     s = bot.send_message(mess.chat.id, "Введите уникальный код для получения доступа к тесту")
     bot.register_next_step_handler(s, findId)
 
+
 def findId(mess: types.Message):
     test = None
+    answers[mess.from_user.id] = 0
     for t in tests.values():
         for form in t:
             if form.id == UUID(mess.text):
-                test = tuple(tests[key][tests[key].index(form)] for key in tests if tests[key] == form)
-    viewTest(mess, test)
+                test = form
+                break
+    print(test)
+    viewTest(mess=mess, form=test)
+
 
 def viewTest(mess: types.Message, form: Form, question_id: int=0):
-    if question_id != 0 and mess.text == form.question[question_id - 1]:
-        pass
+    if question_id != 0:
+        print(form.question[question_id - 1].corr_ans)
+        if mess.text == form.question[question_id - 1].corr_ans:
+            print(True)
+            if form.type == "Learning":
+                bot.send_message(mess.chat.id, "Правильный ответ")
+            elif form.type == "Testing":
+                answers[mess.from_user.id] += 1
+        else:
+            if not form.type == "Learning":
+                bot.send_message(mess.chat.id, f"Правлильный ответ: ||{form[question_id - 1].corr_ans}||", parse_mode="MarkdownV2")
+    if len(form.question) == question_id:
+        testResult(mess=mess, form=form)
+        return
     question_ = form.question[question_id]
     s = bot.send_message(mess.chat.id, f"Вопрос {question_.name}")
     shuffle(question_.other_ans)
     for ans in question_.other_ans:
         bot.send_message(mess.chat.id, ans)
     bot.register_next_step_handler(s, viewTest, form=form, question_id = question_id + 1)
+
+
+def testResult(mess: types.Message, form: Form):
+    answer = answers[mess.from_user.id]
+    if form.type == "Testing":
+        s = bot.send_message(mess.chat.id, f"Вы прошли тест\nВаш результат: {answer}")
+    elif form.type == "Learning":
+        s = bot.send_message(mess.chat.id, "Вы прошли тест!")
+    start(mess)
