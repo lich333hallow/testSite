@@ -1,1 +1,3 @@
-# testing_bot
+# Rewera
+### Token
+Токен содержится в `~/bot/token`
