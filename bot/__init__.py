@@ -2,6 +2,7 @@ from telebot import TeleBot, types
 from .dataClasses import Question, Form
 from uuid import uuid4, UUID
 from random import shuffle
+from timeControl import TimeHandler
 
 bot = TeleBot(open("./bot/token", "r", encoding="utf-8").read())
 
@@ -103,7 +104,6 @@ def add_other_ans(mess: types.Message, corr_ans: str, name_of_qu: str, list_of_a
     bot.register_next_step_handler(n, add_other_ans, name_of_qu=name_of_qu, corr_ans=mess.text, list_of_an=list_of_an)
 
 def nextQuest(mess: types.Message, corr_ans, name_of_qu, list_of_an):
-    list_of_an.append(corr_ans)
     q = Question(name=name_of_qu, corr_ans=corr_ans, other_ans=list_of_an)
     user = mess.from_user.id
     if user not in question.keys():
@@ -115,7 +115,6 @@ def nextQuest(mess: types.Message, corr_ans, name_of_qu, list_of_an):
 def endTest(mess: types.Message, corr_ans: str, name_of_qu: str, list_of_an: list):
     user = mess.from_user.id
     id = uuid4()
-    list_of_an.append(corr_ans)
     q = Question(name=name_of_qu, corr_ans=corr_ans, other_ans=list_of_an)
     if user not in question.keys():
         question[user] = [q]
@@ -126,7 +125,6 @@ def endTest(mess: types.Message, corr_ans: str, name_of_qu: str, list_of_an: lis
     else:
         tests[user].append(Form(id=id, question=question[user], time_limit=option[mess.from_user.id]["limit_time"]))
     question.pop(user)
-    print(tests)
     bot.send_message(mess.chat.id, f"Ура! Вы создали тест. Ваш код для теста:\n <code>{id}</code>", reply_markup=types.ReplyKeyboardRemove(), parse_mode="HTML")
     start(mess)
 
@@ -144,13 +142,11 @@ def findId(mess: types.Message):
             if form.id == UUID(mess.text):
                 test = form
                 break
-    print(test)
     viewTest(mess=mess, form=test)
 
 
 def viewTest(mess: types.Message, form: Form, question_id: int=0):
     if question_id != 0:
-        print(form.question[question_id - 1].corr_ans)
         if mess.text == form.question[question_id - 1].corr_ans:
             print(True)
             if form.type == "Learning":
@@ -163,6 +159,7 @@ def viewTest(mess: types.Message, form: Form, question_id: int=0):
     if len(form.question) == question_id:
         testResult(mess=mess, form=form)
         return
+    TimeHandler(time=option[mess.chat.id]["time"]).timeHand()
     question_ = form.question[question_id]
     s = bot.send_message(mess.chat.id, f"Вопрос {question_.name}")
     shuffle(question_.other_ans)
